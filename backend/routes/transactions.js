@@ -40,12 +40,10 @@ router.post('/', async (req, res) => {
   try {
     const { fromUserId, toUserId, amount } = req.body;
 
-    // Validate amount
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Invalid amount' });
     }
 
-    // Check if users exist
     const fromUser = await User.findById(fromUserId);
     const toUser = await User.findById(toUserId);
 
@@ -53,7 +51,6 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'One or both users not found' });
     }
 
-    // Check if from user has sufficient balance
     const fromWallet = await Wallet.findById(fromUser.walletId);
     if (!fromWallet || fromWallet.balance < amount) {
       return res.status(400).json({ error: 'Insufficient balance' });
@@ -84,18 +81,15 @@ router.post('/payment-callback', async (req, res) => {
   try {
     const { transactionId, status } = req.body;
 
-    // Validate status
     if (!['completed', 'failed'].includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
     }
 
-    // Find and validate transaction
     const transaction = await Transaction.findById(transactionId);
     if (!transaction) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
 
-    // Check if transaction is already processed
     if (transaction.status !== 'pending') {
       return res.status(400).json({ error: 'Transaction already processed' });
     }
@@ -104,7 +98,6 @@ router.post('/payment-callback', async (req, res) => {
     await transaction.save();
 
     if (status === 'completed') {
-      // Find and validate wallets
       const fromWallet = await Wallet.findOne({ userId: transaction.fromUserId });
       const toWallet = await Wallet.findOne({ userId: transaction.toUserId });
 
@@ -114,7 +107,6 @@ router.post('/payment-callback', async (req, res) => {
         return res.status(404).json({ error: 'Wallet not found' });
       }
 
-      // Recheck balance
       if (fromWallet.balance < transaction.amount) {
         transaction.status = 'failed';
         await transaction.save();
